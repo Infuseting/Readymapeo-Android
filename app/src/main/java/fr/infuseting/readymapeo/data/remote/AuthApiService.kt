@@ -6,7 +6,6 @@ import org.json.JSONObject
 
 /**
  * Service d'authentification utilisant l'API REST.
- * Parsing JSON manuel avec org.json (API Android standard).
  */
 class AuthApiService(private val apiClient: ApiClient) {
 
@@ -31,19 +30,14 @@ class AuthApiService(private val apiClient: ApiClient) {
 
     /**
      * Récupère l'utilisateur actuellement connecté.
-     * GET /api/user (fallback sur /api/me)
+     * GET /api/user
      */
     suspend fun getCurrentUser(): User? {
         return try {
             val response = apiClient.get("/api/user")
             parseUser(JSONObject(response))
         } catch (e: Exception) {
-            try {
-                val response = apiClient.get("/api/me")
-                parseUser(JSONObject(response))
-            } catch (e2: Exception) {
-                null
-            }
+            null
         }
     }
 

@@ -6,9 +6,10 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -19,9 +20,6 @@ import fr.infuseting.readymapeo.data.model.Club
 import fr.infuseting.readymapeo.data.model.UpdateClubRequest
 import fr.infuseting.readymapeo.ui.theme.*
 
-/**
- * Écran de détails / édition d'un club.
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ClubDetailScreen(
@@ -32,6 +30,7 @@ fun ClubDetailScreen(
     isOffline: Boolean,
     onNavigateBack: () -> Unit,
     onManageMembersClick: (Int) -> Unit,
+    onShareInviteLink: (Int, String) -> Unit,
     onUpdateClub: (UpdateClubRequest) -> Unit,
     onResetUpdateSuccess: () -> Unit,
     modifier: Modifier = Modifier
@@ -70,7 +69,7 @@ fun ClubDetailScreen(
                 title = { Text(club?.clubName ?: "Détails du club") },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Retour")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Retour")
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -145,12 +144,30 @@ fun ClubDetailScreen(
                                     club.description?.let { DetailRow("Description", it) }
                                     DetailRow(
                                         "Statut",
-                                        if (club.isApproved) "✅ Approuvé" else "⏳ En attente"
+                                        if (club.isApproved) {
+                                            "Officiellement accepté"
+                                        } else {
+                                            "Non officiellement accepté"
+                                        }
                                     )
                                 }
                             }
 
-                            // Bouton gérer les membres
+                            if (!club.isApproved) {
+                                Surface(
+                                    shape = RoundedCornerShape(12.dp),
+                                    color = Warning.copy(alpha = 0.15f),
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Text(
+                                        text = "Ce club n'est pas officiellement accepté pour le moment.",
+                                        color = Warning,
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        modifier = Modifier.padding(12.dp)
+                                    )
+                                }
+                            }
+
                             Button(
                                 onClick = { onManageMembersClick(club.clubId) },
                                 shape = RoundedCornerShape(12.dp),
@@ -169,6 +186,22 @@ fun ClubDetailScreen(
                                     "Gérer les membres",
                                     fontWeight = FontWeight.SemiBold
                                 )
+                            }
+
+                            OutlinedButton(
+                                onClick = { onShareInviteLink(club.clubId, club.clubName) },
+                                shape = RoundedCornerShape(12.dp),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(52.dp)
+                            ) {
+                                Icon(
+                                    Icons.Default.Share,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("Inviter par lien", fontWeight = FontWeight.SemiBold)
                             }
                         }
                     }

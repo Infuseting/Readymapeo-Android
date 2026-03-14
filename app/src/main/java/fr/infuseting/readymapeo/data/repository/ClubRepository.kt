@@ -17,11 +17,7 @@ import kotlinx.coroutines.flow.map
 import org.json.JSONObject
 
 /**
- * Repository principal pour les clubs — source de vérité unique.
- *
- * Pattern :
- * - Lecture → Room (via Flow). Refresh réseau en arrière-plan si en ligne.
- * - Écriture → si en ligne : API + Room. Si hors-ligne : Room + PendingAction.
+ * Repository principal pour les clubs.
  */
 class ClubRepository(
     private val clubDao: ClubDao,
@@ -32,8 +28,6 @@ class ClubRepository(
     companion object {
         private const val TAG = "ClubRepository"
     }
-
-    // ── Lectures (Flow depuis Room) ──────────────────────────
 
     fun observeClubs(): Flow<List<Club>> {
         return clubDao.observeAllClubs().map { entities ->
@@ -57,11 +51,6 @@ class ClubRepository(
         }
     }
 
-    // ── Refresh depuis le réseau ─────────────────────────────
-
-    /**
-     * Rafraîchit la liste des clubs depuis l'API et met à jour Room.
-     */
     suspend fun refreshClubs() {
         if (!connectivityObserver.isOnline()) {
             Log.d(TAG, "Hors-ligne : utilisation du cache local.")
@@ -76,33 +65,22 @@ class ClubRepository(
         }
     }
 
-    /**
-     * Rafraîchit les détails d'un club et ses membres.
-     */
     suspend fun refreshClubDetails(clubId: Int) {
         if (!connectivityObserver.isOnline()) return
         try {
-            val club = clubApiService.getClubDetails(clubId)
-            clubDao.insertClub(club.toEntity())
-
-            val (approved, pending) = clubApiService.getClubMembers(clubId)
+            val details = clubApiService.getClubDetailsWithMembers(clubId)
+            clubDao.insertClub(details.club.toEntity())
             clubDao.deleteUsersByClub(clubId)
             clubDao.insertUsers(
-                approved.map { it.toEntity(clubId, "approved") } +
-                        pending.map { it.toEntity(clubId, "pending") }
+                details.approvedMembers.map { it.toEntity(clubId, "approved") } +
+                        details.pendingMembers.map { it.toEntity(clubId, "pending") }
             )
         } catch (e: Exception) {
             Log.e(TAG, "Erreur refresh détails club $clubId: ${e.message}")
         }
     }
 
-    // ── Écritures (online / offline) ─────────────────────────
-
-    /**
-     * Met à jour un club. Si hors-ligne, enregistre dans la file d'attente.
-     */
     suspend fun updateClub(clubId: Int, request: UpdateClubRequest) {
-        // Mise à jour locale immédiate
         val current = clubDao.getClubById(clubId)
         if (current != null) {
             clubDao.insertClub(
@@ -120,7 +98,6 @@ class ClubRepository(
         if (connectivityObserver.isOnline()) {
             clubApiService.updateClub(clubId, request)
         } else {
-            // Enregistrer pour synchronisation ultérieure
             val payload = JSONObject().apply {
                 request.clubName?.let { put("club_name", it) }
                 request.clubStreet?.let { put("club_street", it) }
@@ -141,7 +118,6 @@ class ClubRepository(
     }
 
     suspend fun approveMember(clubId: Int, userId: Int) {
-        // Mise à jour locale
         clubDao.approveUser(userId, clubId)
 
         if (connectivityObserver.isOnline()) {
@@ -188,8 +164,6 @@ class ClubRepository(
             )
         }
     }
-
-    // ── Mapping helpers ──────────────────────────────────────
 
     private fun ClubEntity.toModel() = Club(
         clubId = clubId,

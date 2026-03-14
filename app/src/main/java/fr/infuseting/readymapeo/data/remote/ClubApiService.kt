@@ -8,9 +8,14 @@ import org.json.JSONObject
 
 /**
  * Service API pour la gestion des clubs.
- * Utilise HttpURLConnection via ApiClient + parsing JSON manuel avec org.json.
  */
 class ClubApiService(private val apiClient: ApiClient) {
+
+    data class ClubDetailsPayload(
+        val club: Club,
+        val approvedMembers: List<User>,
+        val pendingMembers: List<User>
+    )
 
     /**
      * Récupère les clubs gérés par l'utilisateur connecté.
@@ -21,70 +26,33 @@ class ClubApiService(private val apiClient: ApiClient) {
         return parseClubList(response)
     }
 
-    /**
-     * Récupère les détails d'un club.
-     * GET /api/clubs/{id}
-     */
     suspend fun getClubDetails(clubId: Int): Club {
-        val response = apiClient.get("/api/clubs/$clubId")
-        val json = JSONObject(response)
-
-        // L'API peut retourner { "club": {...} } ou directement {...}
-        val clubJson = when {
-            json.has("club") -> json.getJSONObject("club")
-            json.has("data") -> {
-                val data = json.get("data")
-                if (data is JSONObject) {
-                    if (data.has("club")) data.getJSONObject("club") else data
-                } else json
-            }
-            else -> json
-        }
-        return parseClub(clubJson)
+        return getClubDetailsWithMembers(clubId).club
     }
 
     /**
-     * Récupère les membres d'un club (approuvés et en attente).
-     * GET /api/clubs/{id}/members
+     * Récupère le club et ses membres depuis GET /api/clubs/{id}.
      */
-    suspend fun getClubMembers(clubId: Int): Pair<List<User>, List<User>> {
-        val response = apiClient.get("/api/clubs/$clubId/members")
+    suspend fun getClubDetailsWithMembers(clubId: Int): ClubDetailsPayload {
+        val response = apiClient.get("/api/clubs/$clubId")
+        val json = JSONObject(response)
 
-        // Essai de parser comme { "members": [...], "pending_members": [...] }
-        return try {
-            val json = JSONObject(response)
-            val approved = parseUserList(json.optJSONArray("members"))
-            val pending = parseUserList(json.optJSONArray("pending_members"))
-            Pair(approved, pending)
-        } catch (e: Exception) {
-            // Fallback : array brut avec pivot.status
-            try {
-                val arr = JSONArray(response)
-                val approved = mutableListOf<User>()
-                val pending = mutableListOf<User>()
-                for (i in 0 until arr.length()) {
-                    val userJson = arr.getJSONObject(i)
-                    val status = userJson.optJSONObject("pivot")
-                        ?.optString("status", "approved") ?: "approved"
-                    val user = AuthApiService.parseUser(userJson)
-                    if (status.equals("approved", ignoreCase = true)) {
-                        approved.add(user)
-                    } else {
-                        pending.add(user)
-                    }
-                }
-                Pair(approved, pending)
-            } catch (e2: Exception) {
-                Pair(emptyList(), emptyList())
-            }
-        }
+        val payloadRoot = json.optJSONObject("data") ?: json
+        val clubJson = payloadRoot.optJSONObject("club") ?: payloadRoot
+        val membersRoot = payloadRoot.optJSONObject("club") ?: payloadRoot
+
+        return ClubDetailsPayload(
+            club = parseClub(clubJson),
+            approvedMembers = parseUserList(membersRoot.optJSONArray("members")),
+            pendingMembers = parseUserList(membersRoot.optJSONArray("pending_members"))
+        )
     }
 
     /**
      * Met à jour un club.
      * PUT /api/clubs/{id}
      */
-    suspend fun updateClub(clubId: Int, request: UpdateClubRequest): Club {
+    suspend fun updateClub(clubId: Int, request: UpdateClubRequest) {
         val body = JSONObject().apply {
             request.clubName?.let { put("club_name", it) }
             request.clubStreet?.let { put("club_street", it) }
@@ -94,8 +62,7 @@ class ClubApiService(private val apiClient: ApiClient) {
             request.description?.let { put("description", it) }
         }.toString()
 
-        val response = apiClient.put("/api/clubs/$clubId", body)
-        return parseClub(JSONObject(response))
+        apiClient.put("/api/clubs/$clubId", body)
     }
 
     /**
@@ -122,23 +89,15 @@ class ClubApiService(private val apiClient: ApiClient) {
         apiClient.delete("/api/clubs/$clubId/members/$userId")
     }
 
-    // ── Parsing Helpers ─────────────────────────────────────
-
     private fun parseClubList(response: String): List<Club> {
-        return try {
-            // Cas : { "data": [...] }
-            val json = JSONObject(response)
-            val arr = json.getJSONArray("data")
-            List(arr.length()) { parseClub(arr.getJSONObject(it)) }
-        } catch (e: Exception) {
-            try {
-                // Cas : array direct [...]
-                val arr = JSONArray(response)
-                List(arr.length()) { parseClub(arr.getJSONObject(it)) }
-            } catch (e2: Exception) {
-                emptyList()
-            }
+        val trimmed = response.trim()
+        val arr = if (trimmed.startsWith("[")) {
+            JSONArray(trimmed)
+        } else {
+            val json = JSONObject(trimmed)
+            json.optJSONArray("data") ?: JSONArray()
         }
+        return List(arr.length()) { parseClub(arr.getJSONObject(it)) }
     }
 
     companion object {
@@ -150,15 +109,21 @@ class ClubApiService(private val apiClient: ApiClient) {
                 clubCity = json.optString("club_city", ""),
                 clubPostalCode = json.optString("club_postal_code", ""),
                 isApproved = json.optBoolean("is_approved", false),
-                description = json.optString("description", null),
-                clubImage = json.optString("club_image", null),
-                ffsoId = json.optString("ffso_id", null)
+                description = json.optNullableString("description"),
+                clubImage = json.optNullableString("club_image"),
+                ffsoId = json.optNullableString("ffso_id")
             )
         }
 
         fun parseUserList(arr: JSONArray?): List<User> {
             if (arr == null) return emptyList()
             return List(arr.length()) { AuthApiService.parseUser(arr.getJSONObject(it)) }
+        }
+
+        private fun JSONObject.optNullableString(key: String): String? {
+            if (!has(key) || isNull(key)) return null
+            val value = optString(key, "")
+            return if (value.isBlank()) null else value
         }
     }
 }

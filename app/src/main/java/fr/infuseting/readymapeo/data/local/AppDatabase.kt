@@ -34,7 +34,6 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "readymapeo_db"
                 )
-                    .fallbackToDestructiveMigration()
                     .build()
                 INSTANCE = instance
                 instance

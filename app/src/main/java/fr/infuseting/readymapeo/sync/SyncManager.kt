@@ -45,12 +45,12 @@ class SyncManager(
                         val payload = action.payload?.let { JSONObject(it) }
                         if (payload != null) {
                             val request = UpdateClubRequest(
-                                clubName = payload.optString("club_name", null),
-                                clubStreet = payload.optString("club_street", null),
-                                clubCity = payload.optString("club_city", null),
-                                clubPostalCode = payload.optString("club_postal_code", null),
-                                ffsoId = payload.optString("ffso_id", null),
-                                description = payload.optString("description", null)
+                                clubName = payload.optNullableString("club_name"),
+                                clubStreet = payload.optNullableString("club_street"),
+                                clubCity = payload.optNullableString("club_city"),
+                                clubPostalCode = payload.optNullableString("club_postal_code"),
+                                ffsoId = payload.optNullableString("ffso_id"),
+                                description = payload.optNullableString("description")
                             )
                             clubApiService.updateClub(action.clubId, request)
                         }
@@ -84,5 +84,11 @@ class SyncManager(
                 // On continue avec les autres actions
             }
         }
+    }
+
+    private fun JSONObject.optNullableString(key: String): String? {
+        if (!has(key) || isNull(key)) return null
+        val value = optString(key, "")
+        return if (value.isBlank()) null else value
     }
 }

@@ -8,10 +8,11 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -24,10 +25,6 @@ import androidx.compose.ui.unit.sp
 import fr.infuseting.readymapeo.data.model.User
 import fr.infuseting.readymapeo.ui.theme.*
 
-/**
- * Écran de gestion des membres d'un club.
- * Deux onglets : Membres approuvés / En attente.
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MemberManagementScreen(
@@ -58,6 +55,10 @@ fun MemberManagementScreen(
         }
     }
 
+    LaunchedEffect(errorMessage) {
+        errorMessage?.let { snackbarHostState.showSnackbar(it) }
+    }
+
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
@@ -65,13 +66,19 @@ fun MemberManagementScreen(
                 title = { Text("Gestion des membres") },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Retour")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Retour")
+                    }
+                },
+                actions = {
+                    IconButton(onClick = onRefresh) {
+                        Icon(Icons.Default.Refresh, contentDescription = "Rafraîchir")
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = Primary,
                     titleContentColor = OnPrimary,
-                    navigationIconContentColor = OnPrimary
+                    navigationIconContentColor = OnPrimary,
+                    actionIconContentColor = OnPrimary
                 )
             )
         },
@@ -224,6 +231,15 @@ private fun MemberCard(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
+                if (isPending) {
+                    Text(
+                        text = "Non officiellement accepté",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = Warning,
+                        fontWeight = FontWeight.Medium,
+                        modifier = Modifier.padding(top = 2.dp)
+                    )
+                }
             }
 
             // Actions

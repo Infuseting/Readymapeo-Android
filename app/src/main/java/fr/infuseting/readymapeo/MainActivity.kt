@@ -1,5 +1,7 @@
 package fr.infuseting.readymapeo
 
+import android.content.ActivityNotFoundException
+import android.content.Intent
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
@@ -178,6 +180,9 @@ fun ReadymapeoApp() {
                 onManageMembersClick = { id ->
                     navController.navigate(AppRoutes.memberManagement(id))
                 },
+                onShareInviteLink = { inviteClubId, clubName ->
+                    shareClubInviteLink(context, inviteClubId, clubName)
+                },
                 onUpdateClub = { request -> detailViewModel.updateClub(request) },
                 onResetUpdateSuccess = { detailViewModel.resetUpdateSuccess() }
             )
@@ -212,5 +217,26 @@ fun ReadymapeoApp() {
                 onRefresh = { memberViewModel.refreshMembers() }
             )
         }
+    }
+}
+
+private fun shareClubInviteLink(context: android.content.Context, clubId: Int, clubName: String) {
+    val normalizedShareBaseUrl = BuildConfig.SHARE_BASE_URL
+        .trimEnd('/')
+        .removeSuffix("/api")
+    val inviteLink = "$normalizedShareBaseUrl/clubs/$clubId"
+    val shareText =
+        "Rejoins $clubName sur Readymapeo via ce lien : $inviteLink"
+
+    val sendIntent = Intent(Intent.ACTION_SEND).apply {
+        type = "text/plain"
+        putExtra(Intent.EXTRA_SUBJECT, "Invitation Readymapeo")
+        putExtra(Intent.EXTRA_TEXT, shareText)
+    }
+
+    try {
+        context.startActivity(Intent.createChooser(sendIntent, "Inviter via"))
+    } catch (_: ActivityNotFoundException) {
+        Toast.makeText(context, "Aucune application de partage disponible", Toast.LENGTH_SHORT).show()
     }
 }

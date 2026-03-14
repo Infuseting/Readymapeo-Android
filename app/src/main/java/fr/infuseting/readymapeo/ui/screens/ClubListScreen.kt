@@ -8,7 +8,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ExitToApp
+import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -22,9 +22,6 @@ import androidx.compose.ui.unit.sp
 import fr.infuseting.readymapeo.data.model.Club
 import fr.infuseting.readymapeo.ui.theme.*
 
-/**
- * Écran affichant la liste des clubs gérés.
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ClubListScreen(
@@ -56,7 +53,7 @@ fun ClubListScreen(
                         Icon(Icons.Default.Refresh, contentDescription = "Rafraîchir")
                     }
                     IconButton(onClick = onLogoutClick) {
-                        Icon(Icons.Default.ExitToApp, contentDescription = "Déconnexion")
+                        Icon(Icons.AutoMirrored.Filled.ExitToApp, contentDescription = "Déconnexion")
                     }
                 }
             )
@@ -213,7 +210,7 @@ private fun ClubCard(
                 color = if (club.isApproved) Success.copy(alpha = 0.15f) else Warning.copy(alpha = 0.15f)
             ) {
                 Text(
-                    text = if (club.isApproved) "Actif" else "En attente",
+                    text = if (club.isApproved) "Officiellement accepté" else "Non officiellement accepté",
                     style = MaterialTheme.typography.labelMedium,
                     color = if (club.isApproved) Success else Warning,
                     fontWeight = FontWeight.Medium,
