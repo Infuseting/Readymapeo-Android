@@ -20,7 +20,7 @@ android {
             useSupportLibrary = true
         }
 
-        val apiBaseUrl = (project.findProperty("BASE_URL") as String?) ?: "https://g4-devc3.unicaen.fr"
+        val apiBaseUrl = (project.findProperty("BASE_URL") as String?) ?: "http://10.0.2.2:8080"
         val shareBaseUrl = (project.findProperty("SHARE_BASE_URL") as String?) ?: apiBaseUrl
 
         buildConfigField("String", "BASE_URL", "\"$apiBaseUrl\"")

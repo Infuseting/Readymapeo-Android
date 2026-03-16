@@ -171,6 +171,29 @@ class ClubRepository(
         }
     }
 
+    /**
+     * Vérifie si l'utilisateur courant est manager du club donné.
+     * Si hors-ligne, retourne false (sécurisé côté client).
+     */
+    suspend fun isUserManagerOf(clubId: Int): Boolean {
+        if (!connectivityObserver.isOnline()) return false
+        return try {
+            val details = clubApiService.getClubDetailsWithMembers(clubId)
+            // Mettre à jour le cache local afin que les observers voient les membres immédiatement
+            clubDao.insertClub(details.club.toEntity())
+            clubDao.deleteUsersByClub(clubId)
+            clubDao.insertUsers(
+                details.approvedMembers.map { it.toEntity(clubId, "approved") } +
+                        details.pendingMembers.map { it.toEntity(clubId, "pending") }
+            )
+
+            details.club.isManager == true
+        } catch (e: Exception) {
+            Log.e(TAG, "Erreur en vérifiant le rôle de manager pour $clubId: ${e.message}")
+            false
+        }
+    }
+
     private fun ClubEntity.toModel() = Club(
         clubId = clubId,
         clubName = clubName,

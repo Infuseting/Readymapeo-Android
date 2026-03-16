@@ -62,6 +62,12 @@ fun ClubDetailScreen(
         }
     }
 
+    LaunchedEffect(club?.isApproved) {
+        if (club?.isApproved != true) {
+            isEditing = false
+        }
+    }
+
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
@@ -79,7 +85,8 @@ fun ClubDetailScreen(
                     actionIconContentColor = OnPrimary
                 ),
                 actions = {
-                    if (club != null) {
+                    // N'afficher le bouton "Modifier" que si le club existe ET qu'il est approuvé
+                    if (club != null && club.isApproved) {
                         IconButton(onClick = { isEditing = !isEditing }) {
                             Icon(Icons.Default.Edit, contentDescription = "Modifier")
                         }
@@ -168,40 +175,43 @@ fun ClubDetailScreen(
                                 }
                             }
 
-                            Button(
-                                onClick = { onManageMembersClick(club.clubId) },
-                                shape = RoundedCornerShape(12.dp),
-                                colors = ButtonDefaults.buttonColors(containerColor = Secondary),
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(52.dp)
-                            ) {
-                                Icon(
-                                    Icons.Default.Person,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(20.dp)
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text(
-                                    "Gérer les membres",
-                                    fontWeight = FontWeight.SemiBold
-                                )
-                            }
 
-                            OutlinedButton(
-                                onClick = { onShareInviteLink(club.clubId, club.clubName) },
-                                shape = RoundedCornerShape(12.dp),
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(52.dp)
-                            ) {
-                                Icon(
-                                    Icons.Default.Share,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(20.dp)
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text("Inviter par lien", fontWeight = FontWeight.SemiBold)
+                            if (club.isApproved) {
+                                Button(
+                                    onClick = { onManageMembersClick(club.clubId) },
+                                    shape = RoundedCornerShape(12.dp),
+                                    colors = ButtonDefaults.buttonColors(containerColor = Secondary),
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(52.dp)
+                                ) {
+                                    Icon(
+                                        Icons.Default.Person,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(
+                                        "Gérer les membres",
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                }
+
+                                OutlinedButton(
+                                    onClick = { onShareInviteLink(club.clubId, club.clubName) },
+                                    shape = RoundedCornerShape(12.dp),
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(52.dp)
+                                ) {
+                                    Icon(
+                                        Icons.Default.Share,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text("Inviter par lien", fontWeight = FontWeight.SemiBold)
+                                }
                             }
                         }
                     }

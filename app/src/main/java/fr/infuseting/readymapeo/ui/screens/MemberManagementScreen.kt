@@ -22,6 +22,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.launch
 import fr.infuseting.readymapeo.data.model.User
 import fr.infuseting.readymapeo.ui.theme.*
 
@@ -40,12 +41,23 @@ fun MemberManagementScreen(
     onRemoveMember: (Int) -> Unit,
     onResetActionSuccess: () -> Unit,
     onRefresh: () -> Unit,
+    isManager: Boolean,
+    currentUserId: Int?,
     modifier: Modifier = Modifier
 ) {
     var selectedTab by remember { mutableIntStateOf(0) }
-    val tabs = listOf("Membres (${approvedMembers.size})", "En attente (${pendingMembers.size})")
+    val tabs = if (isManager) {
+        listOf("Membres (${approvedMembers.size})", "En attente (${pendingMembers.size})")
+    } else {
+        listOf("Membres (${approvedMembers.size})")
+    }
+
+    LaunchedEffect(isManager) {
+        if (!isManager && selectedTab != 0) selectedTab = 0
+    }
 
     val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
 
     LaunchedEffect(actionSuccess) {
         actionSuccess?.let {
@@ -159,12 +171,22 @@ fun MemberManagementScreen(
                             verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                             items(currentList) { user ->
+                                // Sécuriser l'appel de suppression côté composable
+                                val safeOnRemove: () -> Unit = {
+                                    if (currentUserId != null && currentUserId == user.id) {
+                                        scope.launch { snackbarHostState.showSnackbar("Impossible de vous retirer vous-même") }
+                                    } else {
+                                        onRemoveMember(user.id)
+                                    }
+                                }
+
                                 MemberCard(
                                     user = user,
                                     isPending = isPendingTab,
                                     onApprove = { onApproveMember(user.id) },
                                     onReject = { onRejectMember(user.id) },
-                                    onRemove = { onRemoveMember(user.id) }
+                                    onRemove = safeOnRemove,
+                                    currentUserId = currentUserId
                                 )
                             }
                         }
@@ -181,7 +203,8 @@ private fun MemberCard(
     isPending: Boolean,
     onApprove: () -> Unit,
     onReject: () -> Unit,
-    onRemove: () -> Unit
+    onRemove: () -> Unit,
+    currentUserId: Int? = null
 ) {
     Card(
         shape = RoundedCornerShape(12.dp),
@@ -257,11 +280,14 @@ private fun MemberCard(
                     Icon(Icons.Default.Close, contentDescription = "Rejeter")
                 }
             } else {
-                IconButton(
-                    onClick = onRemove,
-                    colors = IconButtonDefaults.iconButtonColors(contentColor = Error)
-                ) {
-                    Icon(Icons.Default.Delete, contentDescription = "Retirer")
+                // Ne pas proposer de se kick soi-même
+                if (currentUserId != null && user.id != currentUserId) {
+                    IconButton(
+                        onClick = onRemove,
+                        colors = IconButtonDefaults.iconButtonColors(contentColor = Error)
+                    ) {
+                        Icon(Icons.Default.Delete, contentDescription = "Retirer")
+                    }
                 }
             }
         }

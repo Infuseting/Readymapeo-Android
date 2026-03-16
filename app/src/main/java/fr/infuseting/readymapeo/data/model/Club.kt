@@ -10,6 +10,7 @@ data class Club(
     val clubCity: String,
     val clubPostalCode: String,
     val isApproved: Boolean,
+    val isManager: Boolean? = null,
     val description: String? = null,
     val clubImage: String? = null,
     val ffsoId: String? = null

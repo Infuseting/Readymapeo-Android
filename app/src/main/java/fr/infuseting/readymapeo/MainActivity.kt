@@ -178,7 +178,14 @@ fun ReadymapeoApp() {
                 isOffline = isOffline,
                 onNavigateBack = { navController.popBackStack() },
                 onManageMembersClick = { id ->
-                    navController.navigate(AppRoutes.memberManagement(id))
+                    scope.launch {
+                        val isManager = try {
+                            clubRepository.isUserManagerOf(id)
+                        } catch (_: Exception) {
+                            false
+                        }
+                        navController.navigate(AppRoutes.memberManagement(id, isManager))
+                    }
                 },
                 onShareInviteLink = { inviteClubId, clubName ->
                     shareClubInviteLink(context, inviteClubId, clubName)
@@ -189,22 +196,30 @@ fun ReadymapeoApp() {
         }
 
         // ── Gestion des membres ──────────────────────────────
-        composable(
+         composable(
             route = AppRoutes.MEMBER_MANAGEMENT,
-            arguments = listOf(navArgument("clubId") { type = NavType.IntType })
-        ) { backStackEntry ->
+            arguments = listOf(
+                navArgument("clubId") { type = NavType.IntType },
+                navArgument("isManager") { type = NavType.BoolType; defaultValue = false }
+            )
+         ) { backStackEntry ->
             val clubId = backStackEntry.arguments?.getInt("clubId") ?: 0
+            val isManagerArg = backStackEntry.arguments?.getBoolean("isManager") ?: false
 
             val memberViewModel: MemberManagementViewModel = viewModel(factory = object : ViewModelProvider.Factory {
-                @Suppress("UNCHECKED_CAST")
-                override fun <T : ViewModel> create(modelClass: Class<T>): T {
-                    return MemberManagementViewModel(clubId, clubRepository) as T
-                }
-            })
+                 @Suppress("UNCHECKED_CAST")
+                 override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                     return MemberManagementViewModel(clubId, clubRepository) as T
+                 }
+             })
+
+            // Déduire les pending à afficher selon isManagerArg
+            val pendingForScreen = if (isManagerArg) memberViewModel.pendingMembers else emptyList()
+            val currentUserId = tokenManager.fetchUserId()
 
             MemberManagementScreen(
                 approvedMembers = memberViewModel.approvedMembers,
-                pendingMembers = memberViewModel.pendingMembers,
+                pendingMembers = pendingForScreen,
                 isLoading = memberViewModel.isLoading,
                 errorMessage = memberViewModel.errorMessage,
                 actionSuccess = memberViewModel.actionSuccess,
@@ -212,12 +227,20 @@ fun ReadymapeoApp() {
                 onNavigateBack = { navController.popBackStack() },
                 onApproveMember = { userId -> memberViewModel.approveMember(userId) },
                 onRejectMember = { userId -> memberViewModel.rejectMember(userId) },
-                onRemoveMember = { userId -> memberViewModel.removeMember(userId) },
+                onRemoveMember = { userId ->
+                    if (currentUserId != null && currentUserId == userId) {
+                        Toast.makeText(context, "Vous ne pouvez pas vous retirer vous-même", Toast.LENGTH_SHORT).show()
+                    } else {
+                        memberViewModel.removeMember(userId, currentUserId)
+                    }
+                },
                 onResetActionSuccess = { memberViewModel.resetActionSuccess() },
-                onRefresh = { memberViewModel.refreshMembers() }
+                onRefresh = { memberViewModel.refreshMembers() },
+                currentUserId = currentUserId,
+                isManager = isManagerArg
             )
-        }
-    }
+         }
+     }
 }
 
 private fun shareClubInviteLink(context: android.content.Context, clubId: Int, clubName: String) {

@@ -80,7 +80,12 @@ class MemberManagementViewModel(
         }
     }
 
-    fun removeMember(userId: Int) {
+    fun removeMember(userId: Int, currentUserId: Int? = null) {
+        if (currentUserId != null && currentUserId == userId) {
+            errorMessage = "Impossible de vous retirer vous-même"
+            return
+        }
+
         viewModelScope.launch {
             try {
                 clubRepository.removeMember(clubId, userId)

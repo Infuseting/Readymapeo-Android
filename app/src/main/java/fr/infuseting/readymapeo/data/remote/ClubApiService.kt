@@ -40,10 +40,23 @@ class ClubApiService(private val apiClient: ApiClient) {
         val payloadRoot = json.optJSONObject("data") ?: json
         val clubJson = payloadRoot.optJSONObject("club") ?: payloadRoot
 
+        // Détecter isManager aussi bien au niveau du payload que dans l'objet club
+        val isManagerFlag = when {
+            payloadRoot.has("isManager") && !payloadRoot.isNull("isManager") -> payloadRoot.optBoolean("isManager")
+            payloadRoot.has("is_manager") && !payloadRoot.isNull("is_manager") -> payloadRoot.optBoolean("is_manager")
+            clubJson.has("isManager") && !clubJson.isNull("isManager") -> clubJson.optBoolean("isManager")
+            clubJson.has("is_manager") && !clubJson.isNull("is_manager") -> clubJson.optBoolean("is_manager")
+            else -> false
+        }
+
+        // Récupérer membres approuvés et pending : privilégier payloadRoot (parfois l'API expose ces tableaux dans data)
+        val approvedArr = payloadRoot.optJSONArray("members") ?: clubJson.optJSONArray("members")
+        val pendingArr = payloadRoot.optJSONArray("pending_members") ?: clubJson.optJSONArray("pending_members")
+
         return ClubDetailsPayload(
-            club = parseClub(clubJson),
-            approvedMembers = parseUserList(clubJson.optJSONArray("members")),
-            pendingMembers = parseUserList(clubJson.optJSONArray("pending_members"))
+            club = parseClub(clubJson, isManagerFlag),
+            approvedMembers = parseUserList(approvedArr),
+            pendingMembers = parseUserList(pendingArr)
         )
     }
 
@@ -101,7 +114,7 @@ class ClubApiService(private val apiClient: ApiClient) {
     }
 
     companion object {
-        fun parseClub(json: JSONObject): Club {
+        fun parseClub(json: JSONObject, isManager : Boolean = false): Club {
             return Club(
                 clubId = json.getInt("club_id"),
                 clubName = json.getString("club_name"),
@@ -109,6 +122,7 @@ class ClubApiService(private val apiClient: ApiClient) {
                 clubCity = json.optString("club_city", ""),
                 clubPostalCode = json.optString("club_postal_code", ""),
                 isApproved = json.optBoolean("is_approved", false),
+                isManager =  isManager,
                 description = json.optNullableString("description"),
                 clubImage = json.optNullableString("club_image"),
                 ffsoId = json.optNullableString("ffso_id")
