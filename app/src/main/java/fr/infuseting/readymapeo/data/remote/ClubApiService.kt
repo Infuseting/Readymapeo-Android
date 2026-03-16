@@ -39,20 +39,20 @@ class ClubApiService(private val apiClient: ApiClient) {
 
         val payloadRoot = json.optJSONObject("data") ?: json
         val clubJson = payloadRoot.optJSONObject("club") ?: payloadRoot
-        val membersRoot = payloadRoot.optJSONObject("club") ?: payloadRoot
 
         return ClubDetailsPayload(
             club = parseClub(clubJson),
-            approvedMembers = parseUserList(membersRoot.optJSONArray("members")),
-            pendingMembers = parseUserList(membersRoot.optJSONArray("pending_members"))
+            approvedMembers = parseUserList(clubJson.optJSONArray("members")),
+            pendingMembers = parseUserList(clubJson.optJSONArray("pending_members"))
         )
     }
 
     /**
      * Met à jour un club.
      * PUT /api/clubs/{id}
+     * Retourne le corps de réponse (JSON) pour que l'appelant puisse vérifier le champ `status`.
      */
-    suspend fun updateClub(clubId: Int, request: UpdateClubRequest) {
+    suspend fun updateClub(clubId: Int, request: UpdateClubRequest): String {
         val body = JSONObject().apply {
             request.clubName?.let { put("club_name", it) }
             request.clubStreet?.let { put("club_street", it) }
@@ -62,7 +62,7 @@ class ClubApiService(private val apiClient: ApiClient) {
             request.description?.let { put("description", it) }
         }.toString()
 
-        apiClient.put("/api/clubs/$clubId", body)
+        return apiClient.put("/api/clubs/$clubId", body)
     }
 
     /**

@@ -2,6 +2,7 @@ package fr.infuseting.readymapeo.data.local
 
 import android.content.Context
 import android.content.SharedPreferences
+import android.util.Log
 
 /**
  * Gère le stockage sécurisé du token d'authentification
@@ -15,14 +16,18 @@ class TokenManager(context: Context) {
     companion object {
         private const val KEY_TOKEN = "auth_token"
         private const val KEY_USER_ID = "user_id"
+        private const val TAG = "TokenManager"
     }
 
     fun saveToken(token: String) {
+        Log.i(TAG, "Saving token present=${token.isNotBlank()}")
         prefs.edit().putString(KEY_TOKEN, token).apply()
     }
 
     fun fetchToken(): String? {
-        return prefs.getString(KEY_TOKEN, null)
+        val t = prefs.getString(KEY_TOKEN, null)
+        Log.i(TAG, "Fetching token present=${t != null}")
+        return t
     }
 
     fun deleteToken() {

@@ -80,7 +80,12 @@ class ClubRepository(
         }
     }
 
-    suspend fun updateClub(clubId: Int, request: UpdateClubRequest) {
+    /**
+     * Met à jour le club localement, puis tente la mise à jour serveur si en ligne.
+     * Si en ligne : retourne le corps de la réponse (JSON) pour examen par l'appelant.
+     * Si hors-ligne : met en file d'attente et retourne null.
+     */
+    suspend fun updateClub(clubId: Int, request: UpdateClubRequest): String? {
         val current = clubDao.getClubById(clubId)
         if (current != null) {
             clubDao.insertClub(
@@ -95,7 +100,7 @@ class ClubRepository(
             )
         }
 
-        if (connectivityObserver.isOnline()) {
+        return if (connectivityObserver.isOnline()) {
             clubApiService.updateClub(clubId, request)
         } else {
             val payload = JSONObject().apply {
@@ -114,6 +119,7 @@ class ClubRepository(
                 )
             )
             Log.d(TAG, "Hors-ligne : mise à jour du club $clubId mise en file d'attente.")
+            null
         }
     }
 

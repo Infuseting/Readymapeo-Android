@@ -1,5 +1,6 @@
 package fr.infuseting.readymapeo.data.remote
 
+import android.util.Log
 import fr.infuseting.readymapeo.BuildConfig
 import fr.infuseting.readymapeo.data.local.TokenManager
 import kotlinx.coroutines.Dispatchers
@@ -8,6 +9,7 @@ import java.io.BufferedReader
 import java.io.InputStreamReader
 import java.io.OutputStreamWriter
 import java.net.HttpURLConnection
+import java.net.MalformedURLException
 import java.net.URL
 
 /**
@@ -23,12 +25,28 @@ class ApiClient(private val tokenManager: TokenManager) {
 
     private val baseUrl: String = BuildConfig.BASE_URL
 
+    init {
+        Log.i(TAG, "ApiClient initialized with baseUrl=$baseUrl")
+    }
+
+    companion object {
+        private const val TAG = "ApiClient"
+    }
+
     /**
      * Effectue une requête GET.
      * @return le body de la réponse sous forme de String JSON.
      */
     suspend fun get(endpoint: String): String = withContext(Dispatchers.IO) {
-        val url = URL("$baseUrl$endpoint")
+        Log.i(TAG, "[REQUEST] Requesting GET to baseUrl=$baseUrl endpoint=$endpoint")
+        val url = try {
+            URL("$baseUrl$endpoint")
+        } catch (e: MalformedURLException) {
+            Log.e(TAG, "[REQUEST] Malformed URL for GET: baseUrl=$baseUrl endpoint=$endpoint", e)
+            throw e
+        }
+
+        Log.i(TAG, "[REQUEST] Requesting GET $url")
         val connection = (url.openConnection() as HttpURLConnection).apply {
             requestMethod = "GET"
             setHeaders(this)
@@ -36,7 +54,9 @@ class ApiClient(private val tokenManager: TokenManager) {
             readTimeout = 15_000
         }
         try {
-            handleResponse(connection)
+            val response = handleResponse(connection)
+            Log.i(TAG, "[REQUEST] Response GET: $response")
+            response
         } finally {
             connection.disconnect()
         }
@@ -46,7 +66,15 @@ class ApiClient(private val tokenManager: TokenManager) {
      * Effectue une requête POST avec un body JSON.
      */
     suspend fun post(endpoint: String, body: String? = null): String = withContext(Dispatchers.IO) {
-        val url = URL("$baseUrl$endpoint")
+        Log.i(TAG, "[REQUEST] Requesting POST to baseUrl=$baseUrl endpoint=$endpoint")
+        val url = try {
+            URL("$baseUrl$endpoint")
+        } catch (e: MalformedURLException) {
+            Log.e(TAG, "[REQUEST] Malformed URL for POST: baseUrl=$baseUrl endpoint=$endpoint", e)
+            throw e
+        }
+
+        Log.i(TAG, "[REQUEST] Requesting POST $url")
         val connection = (url.openConnection() as HttpURLConnection).apply {
             requestMethod = "POST"
             setHeaders(this)
@@ -59,7 +87,9 @@ class ApiClient(private val tokenManager: TokenManager) {
             }
         }
         try {
-            handleResponse(connection)
+            val response = handleResponse(connection)
+            Log.i(TAG, "[REQUEST] Response POST: $response")
+            response
         } finally {
             connection.disconnect()
         }
@@ -69,7 +99,15 @@ class ApiClient(private val tokenManager: TokenManager) {
      * Effectue une requête PUT avec un body JSON.
      */
     suspend fun put(endpoint: String, body: String): String = withContext(Dispatchers.IO) {
-        val url = URL("$baseUrl$endpoint")
+        Log.i(TAG, "[REQUEST] Requesting PUT to baseUrl=$baseUrl endpoint=$endpoint")
+        val url = try {
+            URL("$baseUrl$endpoint")
+        } catch (e: MalformedURLException) {
+            Log.e(TAG, "[REQUEST] Malformed URL for PUT: baseUrl=$baseUrl endpoint=$endpoint", e)
+            throw e
+        }
+
+        Log.i(TAG, "[REQUEST] Requesting PUT $url")
         val connection = (url.openConnection() as HttpURLConnection).apply {
             requestMethod = "PUT"
             setHeaders(this)
@@ -80,7 +118,9 @@ class ApiClient(private val tokenManager: TokenManager) {
             OutputStreamWriter(outputStream, Charsets.UTF_8).use { it.write(body) }
         }
         try {
-            handleResponse(connection)
+            val response = handleResponse(connection)
+            Log.i(TAG, "[REQUEST] Response PUT: $response")
+            response
         } finally {
             connection.disconnect()
         }
@@ -90,7 +130,16 @@ class ApiClient(private val tokenManager: TokenManager) {
      * Effectue une requête DELETE.
      */
     suspend fun delete(endpoint: String): String = withContext(Dispatchers.IO) {
-        val url = URL("$baseUrl$endpoint")
+        Log.i(TAG, "[REQUEST] Requesting DELETE to baseUrl=$baseUrl endpoint=$endpoint")
+        val url = try {
+            URL("$baseUrl$endpoint")
+        } catch (e: MalformedURLException) {
+            Log.e(TAG, "[REQUEST] Malformed URL for DELETE: baseUrl=$baseUrl endpoint=$endpoint", e)
+            throw e
+        }
+
+        Log.i(TAG, "[REQUEST] Requesting DELETE $url")
+
         val connection = (url.openConnection() as HttpURLConnection).apply {
             requestMethod = "DELETE"
             setHeaders(this)
@@ -98,7 +147,9 @@ class ApiClient(private val tokenManager: TokenManager) {
             readTimeout = 15_000
         }
         try {
-            handleResponse(connection)
+            val response = handleResponse(connection)
+            Log.i(TAG, "[REQUEST] Response DELETE: $response")
+            response
         } finally {
             connection.disconnect()
         }
@@ -125,7 +176,9 @@ class ApiClient(private val tokenManager: TokenManager) {
             reader.readText()
         }
 
+        // Journaliser la réponse (code + body) avant d'éventuellement lancer une exception
         if (code !in 200..299) {
+            Log.w(TAG, "[REQUEST] HTTP $code from ${connection.url}: $body")
             throw ApiException(code, body)
         }
 
@@ -136,5 +189,4 @@ class ApiClient(private val tokenManager: TokenManager) {
 /**
  * Exception personnalisée pour les erreurs HTTP.
  */
-class ApiException(val statusCode: Int, val responseBody: String) :
-    Exception("HTTP $statusCode: $responseBody")
+class ApiException(statusCode: Int, responseBody: String) : Exception("HTTP $statusCode: $responseBody")

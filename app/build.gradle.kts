@@ -20,7 +20,7 @@ android {
             useSupportLibrary = true
         }
 
-        val apiBaseUrl = (project.findProperty("BASE_URL") as String?) ?: "http://10.0.2.2:8000"
+        val apiBaseUrl = (project.findProperty("BASE_URL") as String?) ?: "https://g4-devc3.unicaen.fr"
         val shareBaseUrl = (project.findProperty("SHARE_BASE_URL") as String?) ?: apiBaseUrl
 
         buildConfigField("String", "BASE_URL", "\"$apiBaseUrl\"")
@@ -71,10 +71,10 @@ dependencies {
     implementation(libs.androidx.material3)
 
     // Navigation
-    implementation(libs.androidx.navigation.compose)
+    implementation("androidx.navigation:navigation-compose:2.7.7")
 
     // ViewModel Compose
-    implementation(libs.androidx.lifecycle.viewmodel.compose)
+    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.7.0")
 
     // Room (local database)
     implementation(libs.androidx.room.runtime)

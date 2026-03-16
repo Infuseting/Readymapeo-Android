@@ -10,6 +10,7 @@ import fr.infuseting.readymapeo.data.model.UpdateClubRequest
 import fr.infuseting.readymapeo.data.repository.ClubRepository
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
+import org.json.JSONObject
 
 class ClubDetailViewModel(
     private val clubId: Int,
@@ -57,8 +58,34 @@ class ClubDetailViewModel(
             errorMessage = null
             updateSuccess = false
             try {
-                clubRepository.updateClub(clubId, request)
-                updateSuccess = true
+                val response = clubRepository.updateClub(clubId, request)
+
+                if (response == null) {
+                    // Hors-ligne : la mise à jour locale a été faite et l'action est en file d'attente
+                    updateSuccess = true
+                    return@launch
+                }
+
+                // Parse server response JSON and check for status == "success"
+                val json = JSONObject(response)
+                val status = when {
+                    json.has("status") -> json.optString("status", "")
+                    json.has("data") && json.optJSONObject("data")?.has("status") == true -> json.optJSONObject("data")?.optString("status", "")
+                    else -> ""
+                }
+
+                if (status.equals("success", ignoreCase = true)) {
+                    updateSuccess = true
+                } else {
+                    // Try to extract a message
+                    val message = when {
+                        json.has("message") -> json.optString("message", "Erreur inconnue")
+                        json.has("data") && json.optJSONObject("data")?.has("message") == true -> json.optJSONObject("data")?.optString("message", "Erreur inconnue")
+                        else -> "Erreur inconnue"
+                    }
+                    errorMessage = message
+                }
+
             } catch (e: Exception) {
                 errorMessage = "Erreur de mise à jour : ${e.message}"
             } finally {

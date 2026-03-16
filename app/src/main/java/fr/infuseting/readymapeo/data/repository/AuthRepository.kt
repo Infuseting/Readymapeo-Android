@@ -20,6 +20,7 @@ class AuthRepository(
     suspend fun login(email: String, password: String): LoginResponse {
         val response = authApiService.login(email, password)
         tokenManager.saveToken(response.token)
+
         return response
     }
 

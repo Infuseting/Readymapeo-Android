@@ -21,10 +21,12 @@ class AuthApiService(private val apiClient: ApiClient) {
 
         val response = apiClient.post("/api/login", body)
         val json = JSONObject(response)
+        println("Login response JSON: $json")
+        val token = json.getJSONObject("data")
 
         return LoginResponse(
-            message = json.optString("message", ""),
-            token = json.getString("token")
+            message = json.optString("message", "Unknown response"),
+            token = token.getString("token")
         )
     }
 

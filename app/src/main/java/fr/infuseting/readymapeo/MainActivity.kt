@@ -87,7 +87,7 @@ fun ReadymapeoApp() {
                 scope.launch {
                     try {
                         syncManager.syncPendingActions()
-                    } catch (e: Exception) {
+                    } catch (_: Exception) {
                         // Silencieusement ignorer les erreurs de sync
                     }
                 }
