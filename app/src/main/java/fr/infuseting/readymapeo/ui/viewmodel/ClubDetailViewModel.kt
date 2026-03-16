@@ -20,6 +20,15 @@ class ClubDetailViewModel(
     var club by mutableStateOf<Club?>(null)
         private set
 
+    var approvedMembers by mutableStateOf<List<fr.infuseting.readymapeo.data.model.User>>(emptyList())
+        private set
+
+    var pendingMembers by mutableStateOf<List<fr.infuseting.readymapeo.data.model.User>>(emptyList())
+        private set
+
+    var isManager by mutableStateOf<Boolean?>(null)
+        private set
+
     var isLoading by mutableStateOf(false)
         private set
 
@@ -33,6 +42,25 @@ class ClubDetailViewModel(
         viewModelScope.launch {
             clubRepository.observeClub(clubId).collectLatest { c ->
                 club = c
+            }
+        }
+        // Observer les membres pour permettre l'affichage direct
+        viewModelScope.launch {
+            clubRepository.observeApprovedMembers(clubId).collectLatest { list ->
+                approvedMembers = list
+            }
+        }
+        viewModelScope.launch {
+            clubRepository.observePendingMembers(clubId).collectLatest { list ->
+                pendingMembers = list
+            }
+        }
+        // Vérifier si on est manager (cela mettra aussi à jour le cache local via la méthode)
+        viewModelScope.launch {
+            isManager = try {
+                clubRepository.isUserManagerOf(clubId)
+            } catch (_: Exception) {
+                false
             }
         }
         refreshDetails()
