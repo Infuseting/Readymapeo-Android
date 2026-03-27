@@ -19,10 +19,10 @@ class ClubApiService(private val apiClient: ApiClient) {
 
     /**
      * Récupère les clubs gérés par l'utilisateur connecté.
-     * GET /api/me/managed-clubs
+     * GET /api/user/managed-clubs
      */
     suspend fun getManagedClubs(): List<Club> {
-        val response = apiClient.get("/api/me/managed-clubs")
+        val response = apiClient.get("/api/user/managed-clubs")
         return parseClubList(response)
     }
 
